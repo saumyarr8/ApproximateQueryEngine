@@ -1,13 +1,8 @@
-cmake_minimum_required(VERSION 3.15)
-project(aqe_project)
+cmake_minimum_required(VERSION 3.12)
+project(ApproximateQueryEngine)
 
-# Fetch pybind11
-include(FetchContent)
-FetchContent_Declare(
-    pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG v2.10.4
-)
-FetchContent_MakeAvailable(pybind11)
+set(CMAKE_CXX_STANDARD 17)
 
-add_subdirectory(src/aqe_backend/bindings)
+find_package(pybind11 REQUIRED)
+
+add_subdirectory(src/aqe_backend)

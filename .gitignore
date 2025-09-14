@@ -232,3 +232,18 @@ ENV/
 
 # Project specific
 aqe_backend.cpython-*-linux-gnu.so
+
+# Temporary and test files
+*.db
+test_*
+debug_*
+*.tmp
+*.temp
+scaling_test*
+address_test*
+block_test*
+intelligent_test*
+pointer_test*
+sequential_test*
+native_pointer_test*
+large_scale_test*

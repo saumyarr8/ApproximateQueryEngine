@@ -2,63 +2,78 @@
 #include <sqlite3.h>
 #include <stdexcept>
 
-DB::DB(const std::string& path) {
-    if (sqlite3_open(path.c_str(), (sqlite3**)&db) != SQLITE_OK) {
-        throw std::runtime_error("Failed to open database");
+// Callback function for SQLite queries
+static int query_callback(void* data, int argc, char** argv, char** azColName) {
+    auto* rows = static_cast<std::vector<std::vector<std::string>>*>(data);
+    std::vector<std::string> row;
+    
+    for (int i = 0; i < argc; i++) {
+        row.push_back(argv[i] ? argv[i] : "NULL");
+    }
+    
+    rows->push_back(row);
+    return 0;
+}
+
+DB::DB(const std::string& db_path) {
+    if (sqlite3_open(db_path.c_str(), &db)) {
+        std::string error = sqlite3_errmsg(db);
+        sqlite3_close(db);
+        throw std::runtime_error("Cannot open database: " + error);
     }
 }
 
 DB::~DB() {
-    if (db) sqlite3_close((sqlite3*)db);
+    if (db) {
+        sqlite3_close(db);
+        db = nullptr;
+    }
+}
+
+std::vector<std::vector<std::string>> DB::execute_query(const std::string& query) {
+    std::vector<std::vector<std::string>> results;
+    char* errMsg = nullptr;
+    
+    int rc = sqlite3_exec(db, query.c_str(), query_callback, &results, &errMsg);
+    
+    if (rc != SQLITE_OK) {
+        std::string error = errMsg;
+        sqlite3_free(errMsg);
+        throw std::runtime_error("SQL error: " + error);
+    }
+    
+    return results;
 }
 
 double DB::execute_sum(const std::string& table, const std::string& column) {
-    std::string sql = "SELECT SUM(" + column + ") FROM " + table + ";";
-    sqlite3_stmt* stmt;
-    double result = 0.0;
-
-    if (sqlite3_prepare_v2((sqlite3*)db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-        throw std::runtime_error("Failed to prepare query");
+    std::string query = "SELECT SUM(" + column + ") FROM " + table;
+    auto results = execute_query(query);
+    
+    if (results.empty() || results[0].empty() || results[0][0] == "NULL") {
+        return 0.0;
     }
-
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        result = sqlite3_column_double(stmt, 0);
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+    
+    return std::stod(results[0][0]);
 }
 
-int DB::execute_count(const std::string& table, const std::string& column) {
-    std::string sql = "SELECT COUNT(" + column + ") FROM " + table + ";";
-    sqlite3_stmt* stmt;
-    int result = 0;
-
-    if (sqlite3_prepare_v2((sqlite3*)db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-        throw std::runtime_error("Failed to prepare query");
+double DB::execute_count(const std::string& table, const std::string& column) {
+    std::string query = "SELECT COUNT(" + column + ") FROM " + table;
+    auto results = execute_query(query);
+    
+    if (results.empty() || results[0].empty()) {
+        return 0.0;
     }
-
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        result = sqlite3_column_int(stmt, 0);
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+    
+    return std::stod(results[0][0]);
 }
 
 double DB::execute_avg(const std::string& table, const std::string& column) {
-    std::string sql = "SELECT AVG(" + column + ") FROM " + table + ";";
-    sqlite3_stmt* stmt;
-    double result = 0.0;
-
-    if (sqlite3_prepare_v2((sqlite3*)db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-        throw std::runtime_error("Failed to prepare query");
+    std::string query = "SELECT AVG(" + column + ") FROM " + table;
+    auto results = execute_query(query);
+    
+    if (results.empty() || results[0].empty() || results[0][0] == "NULL") {
+        return 0.0;
     }
-
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        result = sqlite3_column_double(stmt, 0);
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
+    
+    return std::stod(results[0][0]);
 }
